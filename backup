@@ -1,0 +1,162 @@
+
+import java.io.*;
+import java.util.*;
+
+class Student {
+    private String rollNo;
+    private String name;
+    private int totalClasses;
+    private int attendedClasses;
+
+    public Student(String rollNo, String name, int totalClasses, int attendedClasses) {
+        this.rollNo = rollNo;
+        this.name = name;
+        this.totalClasses = totalClasses;
+        this.attendedClasses = attendedClasses;
+    }
+
+    public String getRollNo() { return rollNo; }
+    public String getName() { return name; }
+    public int getTotalClasses() { return totalClasses; }
+    public int getAttendedClasses() { return attendedClasses; }
+
+    public void markAttendance(boolean present) {
+        totalClasses++;
+        if (present) attendedClasses++;
+    }
+
+    public double getAttendancePercentage() {
+        if (totalClasses == 0) return 0.0;
+        return (attendedClasses * 100.0) / totalClasses;
+    }
+
+    public String toFileString() {
+        return rollNo + "," + name + "," + totalClasses + "," + attendedClasses;
+    }
+
+    public static Student fromFileString(String line) {
+        String[] parts = line.split(",");
+        if (parts.length != 4) return null;
+        return new Student(parts[0], parts[1], Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+    }
+
+    public void showStatus() {
+        System.out.println("\n--- Student: " + name + " (Roll: " + rollNo + ") ---");
+        System.out.printf("Attendance: %.2f%%\n", getAttendancePercentage());
+        if (getAttendancePercentage() < 75) {
+            System.out.println("⚠️ Attendance below 75%! Attend more classes.");
+        } else {
+            int canBunk = (int) ((attendedClasses / 0.75) - totalClasses);
+            System.out.println("✅ You can bunk " + canBunk + " more classes safely.");
+        }
+    }
+}
+
+public class AttendanceSystem {
+    private static final String FILE_NAME = "attendance.txt";
+    private static Map<String, Student> students = new HashMap<>();
+    private static Scanner sc = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        loadData();
+        int choice;
+
+        do {
+            System.out.println("\n===== ATTENDANCE SYSTEM =====");
+            System.out.println("1. Check Attendance");
+            System.out.println("2. Mark Attendance");
+            System.out.println("3. Add New Student");
+            System.out.println("4. Exit");
+            System.out.print("Enter your choice: ");
+            choice = sc.nextInt();
+            sc.nextLine(); // consume newline
+
+            switch (choice) {
+                case 1 -> checkAttendance();
+                case 2 -> markAttendance();
+                case 3 -> addStudent();
+                case 4 -> System.out.println("Exiting...");
+                default -> System.out.println("Invalid choice! Try again.");
+            }
+        } while (choice != 4);
+
+        saveData();
+    }
+
+    private static void checkAttendance() {
+        System.out.print("Enter Roll Number: ");
+        String roll = sc.nextLine();
+        Student s = students.get(roll);
+        if (s != null) {
+            s.showStatus();
+        } else {
+            System.out.println("Roll number does not exist.");
+        }
+    }
+
+    private static void markAttendance() {
+        System.out.print("Enter Roll Number: ");
+        String roll = sc.nextLine();
+        Student s = students.get(roll);
+        if (s != null) {
+            System.out.print("Mark attendance for today (P/A): ");
+            String mark = sc.nextLine().trim().toUpperCase();
+            if (mark.equals("P")) {
+                s.markAttendance(true);
+            } else if (mark.equals("A")) {
+                s.markAttendance(false);
+            } else {
+                System.out.println("Invalid input. Skipping attendance update.");
+            }
+            s.showStatus();
+        } else {
+            System.out.println("Roll number does not exist.");
+        }
+    }
+
+    private static void addStudent() {
+        System.out.print("Enter Roll Number: ");
+        String roll = sc.nextLine();
+        if (students.containsKey(roll)) {
+            System.out.println("Student already exists.");
+            return;
+        }
+        System.out.print("Enter Name: ");
+        String name = sc.nextLine();
+        System.out.print("Enter Total Classes Conducted: ");
+        int total = sc.nextInt();
+        System.out.print("Enter Total Classes Attended: ");
+        int attended = sc.nextInt();
+        sc.nextLine(); // consume newline
+        Student newStudent = new Student(roll, name, total, attended);
+        students.put(roll, newStudent);
+        System.out.println("Student added successfully!");
+    }
+
+    private static void loadData() {
+        File file = new File(FILE_NAME);
+        if (!file.exists()) return;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                Student s = Student.fromFileString(line);
+                if (s != null) students.put(s.getRollNo(), s);
+            }
+        } catch (IOException e) {
+            System.out.println("Error loading data: " + e.getMessage());
+        }
+    }
+
+    private static void saveData() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(FILE_NAME))) {
+            for (Student s : students.values()) {
+                bw.write(s.toFileString());
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("Error saving data: " + e.getMessage());
+        }
+    }
+}
+
